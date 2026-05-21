@@ -102,13 +102,18 @@ def _to_dict(value: Any) -> Any:
 
 
 def _render(value: Any, output: OutputFmt, *, table: Table | None = None) -> None:
+    # JSON output goes through stdlib print() so it stays machine-parseable —
+    # Rich's print_json injects ANSI escapes whenever it deems stdout color-
+    # capable (which is true on GitHub Actions runners), and downstream tools
+    # piping our output through `jq` etc. would choke. Tables stay on Rich
+    # because they're human-facing.
     if output is OutputFmt.JSON:
-        stdout.print_json(json.dumps(_to_dict(value), default=str))
+        print(json.dumps(_to_dict(value), indent=2, default=str))
         return
     if table is not None:
         stdout.print(table)
         return
-    stdout.print_json(json.dumps(_to_dict(value), default=str))
+    print(json.dumps(_to_dict(value), indent=2, default=str))
 
 
 def _handle(func: Any) -> Any:
@@ -220,7 +225,7 @@ def keys_provision(
             table.add_row(label, str(value))
         stdout.print(table)
         return
-    stdout.print_json(json.dumps(payload, default=str))
+    print(json.dumps(payload, indent=2, default=str))
 
 
 @keys_app.command("revoke")
