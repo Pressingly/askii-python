@@ -4,6 +4,13 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from askii._endpoints import (
+    GET_KEY_CONFIG,
+    LIST_KEYS,
+    PROVISION_KEY,
+    REVOKE_KEY,
+    UPDATE_KEY_MODEL,
+)
 from askii.models import (
     GetKeyConfigRequest,
     KeyConfig,
@@ -71,7 +78,7 @@ class AsyncKeysResource(_AsyncResource["AsyncAskii"]):
             models=models,
             default_model=default_model,
         )
-        data = await self._client._arequest("POST", "/platform/provision-key", body=_provision_body(req))
+        data = await self._client._arequest("POST", PROVISION_KEY, body=_provision_body(req))
         await self._client._ainvalidate(_RESOURCE)
         return ProvisionKeyResponse.model_validate(data)
 
@@ -79,7 +86,7 @@ class AsyncKeysResource(_AsyncResource["AsyncAskii"]):
         """List active keys for the authenticated user."""
         data = await self._client._arequest(
             "POST",
-            "/platform/list-keys",
+            LIST_KEYS,
             body={},
             cache_resource=_RESOURCE,
             cache_op="list",
@@ -89,7 +96,7 @@ class AsyncKeysResource(_AsyncResource["AsyncAskii"]):
 
     async def revoke(self, *, key: str) -> RevokeKeyResponse:
         """Revoke a key by ``sk-...`` value or ``key_alias``."""
-        data = await self._client._arequest("POST", "/platform/revoke-key", body=_revoke_body(key))
+        data = await self._client._arequest("POST", REVOKE_KEY, body=_revoke_body(key))
         await self._client._ainvalidate(_RESOURCE)
         return RevokeKeyResponse.model_validate(data)
 
@@ -97,7 +104,7 @@ class AsyncKeysResource(_AsyncResource["AsyncAskii"]):
         """Return model configuration for one key."""
         data = await self._client._arequest(
             "POST",
-            "/platform/get-key-config",
+            GET_KEY_CONFIG,
             body=_get_config_body(key),
             cache_resource=_RESOURCE,
             cache_op="get_config",
@@ -116,7 +123,7 @@ class AsyncKeysResource(_AsyncResource["AsyncAskii"]):
         """Update the model configuration for a key."""
         data = await self._client._arequest(
             "POST",
-            "/platform/update-key-model",
+            UPDATE_KEY_MODEL,
             body=_update_body(key, models, default_model),
         )
         await self._client._ainvalidate(_RESOURCE)
@@ -145,7 +152,7 @@ class KeysResource(_SyncResource["Askii"]):
             models=models,
             default_model=default_model,
         )
-        data = self._client._request("POST", "/platform/provision-key", body=_provision_body(req))
+        data = self._client._request("POST", PROVISION_KEY, body=_provision_body(req))
         self._client._invalidate(_RESOURCE)
         return ProvisionKeyResponse.model_validate(data)
 
@@ -153,7 +160,7 @@ class KeysResource(_SyncResource["Askii"]):
         """List active keys for the authenticated user."""
         data = self._client._request(
             "POST",
-            "/platform/list-keys",
+            LIST_KEYS,
             body={},
             cache_resource=_RESOURCE,
             cache_op="list",
@@ -163,7 +170,7 @@ class KeysResource(_SyncResource["Askii"]):
 
     def revoke(self, *, key: str) -> RevokeKeyResponse:
         """Revoke a key by ``sk-...`` value or ``key_alias``."""
-        data = self._client._request("POST", "/platform/revoke-key", body=_revoke_body(key))
+        data = self._client._request("POST", REVOKE_KEY, body=_revoke_body(key))
         self._client._invalidate(_RESOURCE)
         return RevokeKeyResponse.model_validate(data)
 
@@ -171,7 +178,7 @@ class KeysResource(_SyncResource["Askii"]):
         """Return model configuration for one key."""
         data = self._client._request(
             "POST",
-            "/platform/get-key-config",
+            GET_KEY_CONFIG,
             body=_get_config_body(key),
             cache_resource=_RESOURCE,
             cache_op="get_config",
@@ -190,7 +197,7 @@ class KeysResource(_SyncResource["Askii"]):
         """Update the model configuration for a key."""
         data = self._client._request(
             "POST",
-            "/platform/update-key-model",
+            UPDATE_KEY_MODEL,
             body=_update_body(key, models, default_model),
         )
         self._client._invalidate(_RESOURCE)

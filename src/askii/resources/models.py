@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from askii._endpoints import AVAILABLE_MODELS
 from askii.models import AvailableModelsResponse
 from askii.resources._base import _AsyncResource, _SyncResource
 
@@ -22,7 +23,7 @@ class AsyncModelsResource(_AsyncResource["AsyncAskii"]):
         """List the LLM models available on the platform."""
         data = await self._client._arequest(
             "POST",
-            "/platform/available-models",
+            AVAILABLE_MODELS,
             body={},
             cache_resource=_RESOURCE,
             cache_op="list",
@@ -38,7 +39,7 @@ class ModelsResource(_SyncResource["Askii"]):
         """List the LLM models available on the platform."""
         data = self._client._request(
             "POST",
-            "/platform/available-models",
+            AVAILABLE_MODELS,
             body={},
             cache_resource=_RESOURCE,
             cache_op="list",

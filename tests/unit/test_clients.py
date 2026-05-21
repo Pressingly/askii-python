@@ -16,6 +16,12 @@ from askii import (
     InMemoryCache,
     MemoryMode,
 )
+from askii._endpoints import (
+    GET_KEY_CONFIG,
+    LIST_KEYS,
+    PROVISION_KEY,
+    UPDATE_KEY_MODEL,
+)
 
 
 def _resp(status: int = 200, body: dict[str, Any] | None = None) -> httpx.Response:
@@ -39,7 +45,7 @@ def _async_handler(
 async def test_async_keys_provision_invokes_endpoint(config_factory: Callable[..., AskiiConfig]) -> None:
     cfg = config_factory()
     routes = {
-        "/platform/provision-key": {
+        PROVISION_KEY: {
             "api_key": "sk-real-secret-key-1234567890",
             "key_name": "key-1",
             "user_id": "user-1",
@@ -88,8 +94,8 @@ async def test_async_keys_provision_invalidates_list_cache(config_factory: Calla
     cfg = config_factory(cache=cache)
     seen = {"n": 0}
     routes = {
-        "/platform/list-keys": {"user_id": "u", "keys": []},
-        "/platform/provision-key": {
+        LIST_KEYS: {"user_id": "u", "keys": []},
+        PROVISION_KEY: {
             "api_key": "sk-abcdefgh12345678",
             "key_name": "k",
             "user_id": "u",
@@ -97,7 +103,7 @@ async def test_async_keys_provision_invalidates_list_cache(config_factory: Calla
     }
 
     def handler(req: httpx.Request) -> httpx.Response:
-        if req.url.path == "/platform/list-keys":
+        if req.url.path == LIST_KEYS:
             seen["n"] += 1
         return _resp(200, routes[req.url.path])
 
@@ -229,10 +235,10 @@ def test_sync_keys_get_config_then_invalidate(config_factory: Callable[..., Aski
     seen = {"get_config": 0}
 
     def handler(req: httpx.Request) -> httpx.Response:
-        if req.url.path == "/platform/get-key-config":
+        if req.url.path == GET_KEY_CONFIG:
             seen["get_config"] += 1
             return _resp(200, {"key_name": "k", "models": [], "memory_enabled": False})
-        if req.url.path == "/platform/update-key-model":
+        if req.url.path == UPDATE_KEY_MODEL:
             return _resp(200, {"updated": True, "key_name": "k", "models": ["gpt-4o"]})
         return _resp(404, {"detail": "?"})
 
