@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -131,13 +133,27 @@ def _parse_field_errors(detail: Any) -> list[FieldError]:
 
 
 def _parse_retry_after(response: httpx.Response) -> float | None:
+    """Parse ``Retry-After`` as either delta-seconds or an HTTP-date.
+
+    RFC 7231 §7.1.3 allows both forms. We return seconds-from-now; for an
+    HTTP-date in the past, we floor at 0 (the server is effectively saying
+    "retry immediately"). Garbage values yield ``None`` instead of raising.
+    """
     raw = response.headers.get("retry-after")
     if not raw:
         return None
     try:
         return float(raw)
     except ValueError:
+        pass
+    try:
+        when = parsedate_to_datetime(raw)
+    except (TypeError, ValueError):
         return None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    delta = (when - datetime.now(tz=timezone.utc)).total_seconds()
+    return max(0.0, delta)
 
 
 def _request_id_from(response: httpx.Response) -> str | None:

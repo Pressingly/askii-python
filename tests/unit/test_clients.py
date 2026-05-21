@@ -139,6 +139,75 @@ async def test_async_request_escape_hatch_injects_token(config_factory: Callable
     await client.aclose()
 
 
+async def test_async_caller_cannot_shadow_mpass_token(config_factory: Callable[..., AskiiConfig]) -> None:
+    """A caller-supplied ``mpass_token`` in body must lose to the resolver's token."""
+    cfg = config_factory()
+    recorded: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        recorded.append(req)
+        return _resp(200, {"ok": True})
+
+    client = AsyncAskii(
+        token="resolver-jwt",
+        config=cfg,
+        http_client=httpx.AsyncClient(base_url=cfg.base_url, transport=httpx.MockTransport(handler)),
+    )
+    await client.request(
+        "POST",
+        "/platform/future-endpoint",
+        body={"mpass_token": "ATTACKER-JWT", "x": 1},
+    )
+    sent = json.loads(recorded[0].content)
+    assert sent["mpass_token"] == "resolver-jwt"
+    assert sent["x"] == 1
+    await client.aclose()
+
+
+async def test_async_keys_provision_does_not_retry_on_5xx(config_factory: Callable[..., AskiiConfig]) -> None:
+    """`keys.provision` is non-idempotent — a transient 5xx must raise without retrying."""
+    cfg = config_factory(max_retries=3)
+    seen = {"n": 0}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["n"] += 1
+        return _resp(500, {"detail": "boom"})
+
+    client = AsyncAskii(
+        token="jwt-1",
+        config=cfg,
+        http_client=httpx.AsyncClient(base_url=cfg.base_url, transport=httpx.MockTransport(handler)),
+    )
+    from askii import AskiiServerError
+
+    with pytest.raises(AskiiServerError):
+        await client.keys.provision(key_alias="x")
+    assert seen["n"] == 1
+    await client.aclose()
+
+
+async def test_async_keys_list_still_retries_on_5xx(config_factory: Callable[..., AskiiConfig]) -> None:
+    """`keys.list` is idempotent — the existing retry policy still applies."""
+    cfg = config_factory(max_retries=3)
+    seen = {"n": 0}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["n"] += 1
+        if seen["n"] < 2:
+            return _resp(500, {"detail": "boom"})
+        return _resp(200, {"user_id": "u", "keys": []})
+
+    client = AsyncAskii(
+        token="jwt-1",
+        config=cfg,
+        http_client=httpx.AsyncClient(base_url=cfg.base_url, transport=httpx.MockTransport(handler)),
+    )
+    resp = await client.keys.list()
+    assert resp.user_id == "u"
+    assert seen["n"] == 2
+    await client.aclose()
+
+
 async def test_async_models_list(config_factory: Callable[..., AskiiConfig]) -> None:
     cfg = config_factory()
 
@@ -189,6 +258,30 @@ def test_sync_keys_provision(config_factory: Callable[..., AskiiConfig]) -> None
     resp = client.keys.provision()
     assert resp.api_key.get_secret_value() == "sk-syncsyncsyncsyncsync"
     client.close()
+
+
+def test_sync_caller_cannot_shadow_mpass_token(config_factory: Callable[..., AskiiConfig]) -> None:
+    """Same shadow-protection as the async path."""
+    cfg = config_factory()
+    recorded: list[httpx.Request] = []
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        recorded.append(req)
+        return _resp(200, {"ok": True})
+
+    with Askii(
+        token="resolver-jwt",
+        config=cfg,
+        http_client=httpx.Client(base_url=cfg.base_url, transport=httpx.MockTransport(handler)),
+    ) as client:
+        client.request(
+            "POST",
+            "/platform/anything",
+            body={"mpass_token": "ATTACKER-JWT", "x": 9},
+        )
+    sent = json.loads(recorded[0].content)
+    assert sent["mpass_token"] == "resolver-jwt"
+    assert sent["x"] == 9
 
 
 def test_sync_request_escape_hatch_injects_token(config_factory: Callable[..., AskiiConfig]) -> None:

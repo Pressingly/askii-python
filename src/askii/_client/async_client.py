@@ -56,6 +56,7 @@ class AsyncAskii:
         path: str,
         *,
         body: dict[str, Any] | None = None,
+        idempotent: bool = True,
         cache_ttl: float | None = None,
         cache_resource: str | None = None,
         cache_op: str | None = None,
@@ -64,12 +65,15 @@ class AsyncAskii:
         """Send an arbitrary request to the Askii API.
 
         The ``mpass_token`` is injected for you. Provide ``cache_resource`` +
-        ``cache_op`` + ``cache_ttl`` if you want the response cached.
+        ``cache_op`` + ``cache_ttl`` if you want the response cached. Pass
+        ``idempotent=False`` for mutating endpoints — the SDK then skips the
+        retry policy so a transient 5xx cannot double-apply the mutation.
         """
         return await self._arequest(
             method,
             path,
             body=body or {},
+            idempotent=idempotent,
             cache_resource=cache_resource,
             cache_op=cache_op,
             cache_args=cache_args,
@@ -86,13 +90,15 @@ class AsyncAskii:
         path: str,
         *,
         body: dict[str, Any],
+        idempotent: bool = True,
         cache_resource: str | None = None,
         cache_op: str | None = None,
         cache_args: dict[str, Any] | None = None,
         cache_ttl: float | None = None,
     ) -> dict[str, Any]:
         token = await self._resolver()
-        body_with_token: dict[str, Any] = {"mpass_token": token, **body}
+        # mpass_token is set last so it cannot be shadowed by a caller-supplied key in body.
+        body_with_token: dict[str, Any] = {**body, "mpass_token": token}
         cache_key: str | None = None
         if cache_resource and cache_op and cache_ttl and cache_ttl > 0:
             cache_key = build_cache_key(token, cache_resource, cache_op, cache_args)
@@ -100,6 +106,7 @@ class AsyncAskii:
             method,
             path,
             body=body_with_token,
+            idempotent=idempotent,
             cache_key=cache_key,
             cache_ttl=cache_ttl,
         )

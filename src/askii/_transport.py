@@ -102,10 +102,18 @@ class HTTPTransport:
         path: str,
         *,
         body: dict[str, Any],
+        idempotent: bool = True,
         cache_key: str | None = None,
         cache_ttl: float | None = None,
     ) -> dict[str, Any]:
-        """Run an async request with cache + retry + hooks."""
+        """Run an async request with cache + retry + hooks.
+
+        When ``idempotent`` is ``False`` (mutating ops), the retry wrapper is
+        skipped entirely — a single attempt, errors propagate immediately. We
+        cannot safely retry a non-idempotent POST: a transient 5xx may mean
+        the upstream did execute the mutation but failed to respond, and a
+        retry would double-apply.
+        """
         if self._sync or self._client_async is None:
             raise RuntimeError("HTTPTransport was constructed with sync=True")
 
@@ -118,7 +126,10 @@ class HTTPTransport:
 
         correlation_token, correlation_id = self._ensure_correlation_id()
         try:
-            payload = await self._arun_with_retries(method, path, body, correlation_id)
+            if idempotent:
+                payload = await self._arun_with_retries(method, path, body, correlation_id)
+            else:
+                payload = await self._asend(method, path, body, correlation_id, attempt=1)
         except BaseException as exc:
             self._hooks.error(exc)
             raise
@@ -180,10 +191,14 @@ class HTTPTransport:
         path: str,
         *,
         body: dict[str, Any],
+        idempotent: bool = True,
         cache_key: str | None = None,
         cache_ttl: float | None = None,
     ) -> dict[str, Any]:
-        """Run a sync request with cache + retry + hooks."""
+        """Run a sync request with cache + retry + hooks.
+
+        See :meth:`arequest` for ``idempotent`` semantics.
+        """
         if not self._sync or self._client_sync is None:
             raise RuntimeError("HTTPTransport was constructed with sync=False")
 
@@ -196,7 +211,10 @@ class HTTPTransport:
 
         correlation_token, correlation_id = self._ensure_correlation_id()
         try:
-            payload = self._run_with_retries(method, path, body, correlation_id)
+            if idempotent:
+                payload = self._run_with_retries(method, path, body, correlation_id)
+            else:
+                payload = self._send(method, path, body, correlation_id, attempt=1)
         except BaseException as exc:
             self._hooks.error(exc)
             raise

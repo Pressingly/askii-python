@@ -84,6 +84,40 @@ async def test_retries_on_5xx_until_success(config_factory: Callable[..., AskiiC
     await transport.aclose()
 
 
+async def test_non_idempotent_call_skips_retries(config_factory: Callable[..., AskiiConfig]) -> None:
+    """`idempotent=False` must NOT retry on 5xx — the mutation may already have applied."""
+    cfg = config_factory(max_retries=3)
+    seen = {"n": 0}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["n"] += 1
+        return _resp(500, {"detail": "boom"})
+
+    transport = _transport(cfg, handler)
+    from askii import AskiiServerError
+
+    with pytest.raises(AskiiServerError):
+        await transport.arequest("POST", "/x", body={}, idempotent=False)
+    assert seen["n"] == 1
+    await transport.aclose()
+
+
+async def test_non_idempotent_call_still_succeeds_on_2xx(config_factory: Callable[..., AskiiConfig]) -> None:
+    """Happy-path non-idempotent calls return as normal."""
+    cfg = config_factory(max_retries=3)
+    seen = {"n": 0}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["n"] += 1
+        return _resp(200, {"ok": True})
+
+    transport = _transport(cfg, handler)
+    result = await transport.arequest("POST", "/x", body={}, idempotent=False)
+    assert result == {"ok": True}
+    assert seen["n"] == 1
+    await transport.aclose()
+
+
 async def test_gives_up_after_max_attempts(config_factory: Callable[..., AskiiConfig]) -> None:
     cfg = config_factory(max_retries=2)
     seen = {"n": 0}

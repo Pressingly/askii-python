@@ -121,6 +121,12 @@ Recognized environment variables:
 | `ASKII_TOKEN` | `token` | — |
 | `ASKII_TIMEOUT_SECONDS` | `timeout` | `30.0` |
 | `ASKII_MAX_RETRIES` | `max_retries` | `3` |
+| `ASKII_CA_BUNDLE` | `verify` (path) | system trust store |
+| `ASKII_VERIFY` | `verify` (`0/false/no/off` → `False`) | `True` |
+
+`ASKII_CA_BUNDLE` wins over `ASKII_VERIFY` when both are set. Disabling TLS
+verification is intended for local-dev / mkcert setups — don't ship it to
+prod.
 
 ---
 
@@ -185,8 +191,24 @@ except AskiiValidationError as exc:
 ```
 
 5xx / 429 / connection / timeout errors are retried by the built-in tenacity
-policy (max 3 attempts, exponential backoff with jitter, honors `Retry-After`).
-4xx errors are not retried.
+policy (max 3 attempts, exponential backoff with jitter, honors `Retry-After`
+in both delta-seconds and HTTP-date form). 4xx errors are not retried.
+
+### Idempotent vs. mutating calls
+
+Retrying a non-idempotent POST is unsafe — a transient 5xx may mean the
+upstream did execute the mutation but failed to respond, and a blind retry
+would double-apply it. The SDK marks the mutating resource methods —
+`keys.provision`, `keys.revoke`, `keys.update_model` — with
+`idempotent=False`, which skips the retry policy for those calls (they run
+once and raise on the first failure). Read-only calls (`keys.list`,
+`keys.get_config`, `models.list`) and the low-level `client.request()`
+escape hatch default to `idempotent=True`. Override the flag on the escape
+hatch if you're calling a mutating endpoint that isn't yet wrapped:
+
+```python
+await client.request("POST", "/platform/new-mutation", body={...}, idempotent=False)
+```
 
 ---
 

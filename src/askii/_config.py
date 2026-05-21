@@ -61,6 +61,10 @@ class AskiiConfig:
         - ``ASKII_TOKEN``
         - ``ASKII_TIMEOUT_SECONDS``
         - ``ASKII_MAX_RETRIES``
+        - ``ASKII_CA_BUNDLE`` — path to a CA bundle for TLS verification.
+        - ``ASKII_VERIFY`` — set to ``0|false|no|off`` (case-insensitive) to
+          disable TLS verification entirely. ``ASKII_CA_BUNDLE`` wins if both
+          are set.
 
         Explicit kwargs always win over env vars.
         """
@@ -73,6 +77,10 @@ class AskiiConfig:
             env_kwargs["timeout"] = float(raw)
         if (raw := os.getenv("ASKII_MAX_RETRIES")) is not None:
             env_kwargs["max_retries"] = int(raw)
+        if bundle := os.getenv("ASKII_CA_BUNDLE"):
+            env_kwargs["verify"] = bundle
+        elif (verify_raw := os.getenv("ASKII_VERIFY")) is not None:
+            env_kwargs["verify"] = verify_raw.strip().lower() not in {"0", "false", "no", "off"}
         env_kwargs.update(overrides)
         return cls(**env_kwargs)
 

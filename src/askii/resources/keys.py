@@ -78,7 +78,7 @@ class AsyncKeysResource(_AsyncResource["AsyncAskii"]):
             models=models,
             default_model=default_model,
         )
-        data = await self._client._arequest("POST", PROVISION_KEY, body=_provision_body(req))
+        data = await self._client._arequest("POST", PROVISION_KEY, body=_provision_body(req), idempotent=False)
         await self._client._ainvalidate(_RESOURCE)
         return ProvisionKeyResponse.model_validate(data)
 
@@ -96,7 +96,7 @@ class AsyncKeysResource(_AsyncResource["AsyncAskii"]):
 
     async def revoke(self, *, key: str) -> RevokeKeyResponse:
         """Revoke a key by ``sk-...`` value or ``key_alias``."""
-        data = await self._client._arequest("POST", REVOKE_KEY, body=_revoke_body(key))
+        data = await self._client._arequest("POST", REVOKE_KEY, body=_revoke_body(key), idempotent=False)
         await self._client._ainvalidate(_RESOURCE)
         return RevokeKeyResponse.model_validate(data)
 
@@ -125,6 +125,7 @@ class AsyncKeysResource(_AsyncResource["AsyncAskii"]):
             "POST",
             UPDATE_KEY_MODEL,
             body=_update_body(key, models, default_model),
+            idempotent=False,
         )
         await self._client._ainvalidate(_RESOURCE)
         return UpdateKeyModelResponse.model_validate(data)
@@ -152,7 +153,7 @@ class KeysResource(_SyncResource["Askii"]):
             models=models,
             default_model=default_model,
         )
-        data = self._client._request("POST", PROVISION_KEY, body=_provision_body(req))
+        data = self._client._request("POST", PROVISION_KEY, body=_provision_body(req), idempotent=False)
         self._client._invalidate(_RESOURCE)
         return ProvisionKeyResponse.model_validate(data)
 
@@ -170,7 +171,7 @@ class KeysResource(_SyncResource["Askii"]):
 
     def revoke(self, *, key: str) -> RevokeKeyResponse:
         """Revoke a key by ``sk-...`` value or ``key_alias``."""
-        data = self._client._request("POST", REVOKE_KEY, body=_revoke_body(key))
+        data = self._client._request("POST", REVOKE_KEY, body=_revoke_body(key), idempotent=False)
         self._client._invalidate(_RESOURCE)
         return RevokeKeyResponse.model_validate(data)
 
@@ -199,6 +200,7 @@ class KeysResource(_SyncResource["Askii"]):
             "POST",
             UPDATE_KEY_MODEL,
             body=_update_body(key, models, default_model),
+            idempotent=False,
         )
         self._client._invalidate(_RESOURCE)
         return UpdateKeyModelResponse.model_validate(data)

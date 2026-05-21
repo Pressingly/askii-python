@@ -101,6 +101,22 @@ def test_sync_method_raises_on_async_transport_object(config_factory: Callable[.
         transport.request("POST", "/x", body={})
 
 
+def test_sync_non_idempotent_skips_retries(config_factory: Callable[..., AskiiConfig]) -> None:
+    """`idempotent=False` must NOT retry on 5xx in the sync transport either."""
+    cfg = config_factory(max_retries=3)
+    seen = {"n": 0}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["n"] += 1
+        return _resp(500, {"detail": "boom"})
+
+    transport = _transport(cfg, handler)
+    with pytest.raises(AskiiServerError):
+        transport.request("POST", "/x", body={}, idempotent=False)
+    assert seen["n"] == 1
+    transport.close()
+
+
 def test_sync_returns_500_after_retries(config_factory: Callable[..., AskiiConfig]) -> None:
     def handler(req: httpx.Request) -> httpx.Response:
         return _resp(500, {"detail": "boom"})

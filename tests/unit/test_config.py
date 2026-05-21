@@ -56,3 +56,30 @@ def test_user_agent_includes_python_version() -> None:
 
     cfg = AskiiConfig()
     assert platform.python_version() in cfg.user_agent
+
+
+def test_from_env_reads_ca_bundle(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ASKII_CA_BUNDLE", "/etc/ssl/certs/askii-ca.pem")
+    cfg = AskiiConfig.from_env()
+    assert cfg.verify == "/etc/ssl/certs/askii-ca.pem"
+
+
+@pytest.mark.parametrize("raw", ["0", "false", "False", "NO", "off", "Off"])
+def test_from_env_disables_verify(monkeypatch: pytest.MonkeyPatch, raw: str) -> None:
+    monkeypatch.setenv("ASKII_VERIFY", raw)
+    cfg = AskiiConfig.from_env()
+    assert cfg.verify is False
+
+
+@pytest.mark.parametrize("raw", ["1", "true", "yes", "on"])
+def test_from_env_enables_verify_explicitly(monkeypatch: pytest.MonkeyPatch, raw: str) -> None:
+    monkeypatch.setenv("ASKII_VERIFY", raw)
+    cfg = AskiiConfig.from_env()
+    assert cfg.verify is True
+
+
+def test_from_env_ca_bundle_wins_over_verify_flag(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ASKII_VERIFY", "false")
+    monkeypatch.setenv("ASKII_CA_BUNDLE", "/etc/ssl/certs/askii-ca.pem")
+    cfg = AskiiConfig.from_env()
+    assert cfg.verify == "/etc/ssl/certs/askii-ca.pem"

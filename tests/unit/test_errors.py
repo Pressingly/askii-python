@@ -88,6 +88,47 @@ def test_429_with_invalid_retry_after_is_none() -> None:
     assert err.retry_after is None
 
 
+def test_429_with_http_date_retry_after(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``Retry-After`` may also be an HTTP-date (RFC 7231 §7.1.3)."""
+    from datetime import datetime, timezone
+
+    fixed_now = datetime(2026, 10, 21, 7, 28, 0, tzinfo=timezone.utc)
+
+    class _Clock:
+        @staticmethod
+        def now(tz: object = None) -> datetime:
+            return fixed_now
+
+    monkeypatch.setattr("askii._errors.datetime", _Clock, raising=False)
+    # 30 seconds in the future
+    err = map_response_to_error(_make_response(429, {"detail": "x"}, {"retry-after": "Wed, 21 Oct 2026 07:28:30 GMT"}))
+    assert isinstance(err, AskiiRateLimitError)
+    assert err.retry_after is not None
+    assert 29.0 <= err.retry_after <= 31.0
+
+
+def test_429_with_past_http_date_retry_after_is_clamped_to_zero(monkeypatch: pytest.MonkeyPatch) -> None:
+    from datetime import datetime, timezone
+
+    fixed_now = datetime(2026, 10, 21, 7, 28, 0, tzinfo=timezone.utc)
+
+    class _Clock:
+        @staticmethod
+        def now(tz: object = None) -> datetime:
+            return fixed_now
+
+    monkeypatch.setattr("askii._errors.datetime", _Clock, raising=False)
+    err = map_response_to_error(_make_response(429, {"detail": "x"}, {"retry-after": "Tue, 20 Oct 2026 07:28:00 GMT"}))
+    assert isinstance(err, AskiiRateLimitError)
+    assert err.retry_after == 0.0
+
+
+def test_429_with_unparseable_retry_after_falls_through_to_none() -> None:
+    err = map_response_to_error(_make_response(429, {"detail": "x"}, {"retry-after": "not a date"}))
+    assert isinstance(err, AskiiRateLimitError)
+    assert err.retry_after is None
+
+
 def test_maps_500_to_server_error() -> None:
     err = map_response_to_error(_make_response(500, {"detail": "boom"}))
     assert isinstance(err, AskiiServerError)
