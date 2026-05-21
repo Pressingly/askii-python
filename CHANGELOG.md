@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+_No changes yet._
+
+## [0.1.0] - 2026-05-21
+
 ### Added
 
 - Initial release scaffolding for the Askii Python client.
@@ -32,4 +36,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `mpass_token` injection now wins over any caller-supplied `mpass_token` in `body=…` (previously, a caller's key could shadow the resolver's token).
 - `Retry-After` headers in HTTP-date form (RFC 7231 §7.1.3) are now parsed correctly; previously they fell back to exponential backoff and ignored the server's wait hint.
 
-[Unreleased]: https://github.com/Pressingly/askii-python/compare/v0.0.0...HEAD
+[Unreleased]: https://github.com/Pressingly/askii-python/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Pressingly/askii-python/releases/tag/v0.1.0
