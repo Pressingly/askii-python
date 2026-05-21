@@ -1,0 +1,136 @@
+[build-system]
+requires = ["hatchling>=1.21", "hatch-vcs>=0.4"]
+build-backend = "hatchling.build"
+
+[project]
+name = "askii"
+dynamic = ["version"]
+description = "Production-grade Python client for the Askii platform API."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "Pressingly" }]
+keywords = ["askii", "litellm", "moneta", "mpass", "api-client", "sdk"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Typing :: Typed",
+]
+dependencies = [
+    "httpx[http2]>=0.27",
+    "pydantic>=2.6",
+    "tenacity>=8.2",
+    "typer>=0.12",
+    "rich>=13.7",
+]
+
+[project.optional-dependencies]
+redis = ["redis>=5.0"]
+dev = [
+    "pytest>=7.4",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=4.1",
+    "pytest-recording>=0.13",
+    "fakeredis>=2.21",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "types-redis",
+]
+
+[project.scripts]
+askii = "askii.cli._app:app"
+
+[project.urls]
+Homepage = "https://github.com/Pressingly/askii-python"
+Repository = "https://github.com/Pressingly/askii-python"
+Issues = "https://github.com/Pressingly/askii-python/issues"
+Changelog = "https://github.com/Pressingly/askii-python/blob/main/CHANGELOG.md"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/askii/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/askii"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src/askii", "tests", "README.md", "LICENSE", "CHANGELOG.md", "pyproject.toml"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["src", "tests"]
+extend-exclude = ["src/askii/_version.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+ignore = []
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.mypy]
+strict = true
+python_version = "3.10"
+files = ["src/askii"]
+plugins = ["pydantic.mypy"]
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unreachable = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+
+[[tool.mypy.overrides]]
+module = ["fakeredis.*"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_functions = ["test_*"]
+addopts = [
+    "-ra",
+    "--strict-markers",
+    "--strict-config",
+]
+markers = [
+    "integration: marks tests requiring network or fixtures (deselect with -m 'not integration')",
+]
+filterwarnings = ["error"]
+
+[tool.coverage.run]
+source = ["src/askii"]
+branch = true
+omit = ["src/askii/_version.py"]
+
+[tool.coverage.report]
+exclude_also = [
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@overload",
+    "pragma: no cover",
+]
+show_missing = true
+skip_covered = false
