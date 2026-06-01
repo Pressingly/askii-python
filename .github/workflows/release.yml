@@ -31,7 +31,7 @@ jobs:
           m = re.search(rf"## \[{re.escape(version)}\][^\n]*\n(.*?)(?=\n## |\Z)", text, re.S)
           sys.stdout.write(m.group(1).strip() if m else f"Release {tag}")
           PY
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         with:
           files: dist/*
           body_path: release_notes.md
